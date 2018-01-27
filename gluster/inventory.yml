@@ -1,9 +1,10 @@
 gluster:
   hosts:
     192.168.1.0:
-      ansible_user: centos
+    192.168.1.1:
 
   vars:
+    ansible_user: centos
     ansible_ssh_common_args: '
       -o ProxyCommand="
         ssh

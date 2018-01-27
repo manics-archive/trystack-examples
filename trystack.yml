@@ -43,7 +43,7 @@
         network: public
         state: present
 
-    when: "{{ create_network }}"
+    when: create_network
 
   - os_server:
       auto_ip: yes
@@ -61,16 +61,36 @@
       state: present
     register: instance
 
+  - os_server:
+      auto_ip: no
+      flavor_ram: 2048
+      image: CentOS7
+      key_name: trystack-key
+      meta:
+        groups: "test"
+      name: test-2
+      nics:
+      - net-name: network-1
+      security_groups:
+      - default
+      - all
+
   - os_volume:
-      display_name: test-vol-1
+      display_name: test-vol-{{ item }}
       size: 10
       state: present
+    with_items: [1, 2]
+    tags:
+    - storage
 
   - os_server_volume:
       state: present
-      server: test-1
-      volume: test-vol-1
+      server: test-{{ item }}
+      volume: test-vol-{{ item }}
       #device: /dev/vdb
+    with_items: [1, 2]
+    tags:
+    - storage
 
   - debug:
       msg: "External IP: {{ instance.openstack.public_v4 }}"
