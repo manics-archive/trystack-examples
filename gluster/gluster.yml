@@ -76,8 +76,11 @@
       brick: "{{ gluster_brick_dir }}"
       replicas: "{{ (groups.gluster | length) > 1 | ternary(groups.gluster | length, omit) }}"
       cluster: "{{ groups.gluster | join(',') }}"
+      rebalance: "{{ (groups.gluster | length) > 1 }}"
       host: "{{ inventory_hostname }}"
-    run_once: true
+    # Deterministically run on first host in case hosts are added
+    delegate_to: "{{ (groups.gluster | sort).0 }}"
+    run_once: yes
 
   - name: mount gluster volume
     mount:
