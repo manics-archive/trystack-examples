@@ -43,6 +43,32 @@
     - "{{ gluster_brick_dir }}"
     - "{{ gluster_mount_dir }}"
 
+  - name: check if this is part of an existing cluster
+    command: gluster volume info {{ gluster_brick_name }}
+    register: _gluster_volume_info
+    failed_when: _gluster_volume_info.rc not in [0, 1]
+    changed_when: _gluster_volume_info.rc == 1
+
+  # Ansible xattr module only works on user.* attrs
+  - name: check xattrs
+    command: getfattr --absolute-names -m . {{ gluster_brick_dir }}
+    register: _gluster_brick_xattrs
+    when: _gluster_volume_info.rc == 1
+
+  - name: print xattrs
+    debug:
+      msg: "xattrs: {{ _gluster_brick_xattrs.stdout_lines }}"
+    when: _gluster_volume_info.rc == 1
+
+  # https://wiki.uiowa.edu/display/hpcadmin/Gluster%3A+Moving+bricks+between+servers
+  # Ansible xattr module only works on user.* attrs
+  - name: remove xattr if an existing brick is attached to a new server
+    command: setfattr --remove={{ item }} {{ gluster_brick_dir }}
+    when: (_gluster_volume_info.rc == 1) and (item in _gluster_brick_xattrs.stdout_lines)
+    with_items:
+    - trusted.gfid
+    - trusted.glusterfs.volume-id
+
   - name: configure gluster volume
     gluster_volume:
       state: present
