@@ -1,0 +1,79 @@
+- hosts: localhost
+
+  tasks:
+
+  - block:
+
+    - os_keypair:
+        name: trystack-key
+        public_key_file: "{{ ansible_env.HOME }}/.ssh/id_rsa.pub"
+        state: present
+
+    - os_security_group:
+        description: All ports open
+        name: all
+        state: present
+
+    - os_security_group_rule:
+        direction: ingress
+        port_range_min: 1
+        port_range_max: 65535
+        protocol: tcp
+        remote_ip_prefix: 0.0.0.0/0
+        security_group: all
+        state: present
+
+    - os_network:
+        name: network-1
+        state: present
+
+    - os_subnet:
+        cidr: 192.168.210.0/24
+        dns_nameservers:
+        - 8.8.8.8
+        - 8.8.4.4
+        name: subnet-1
+        network_name: network-1
+        state: present
+
+    - os_router:
+        interfaces:
+        - subnet-1
+        name: router-1
+        network: public
+        state: present
+
+    when: "{{ create_network }}"
+
+  - os_server:
+      auto_ip: yes
+      flavor_ram: 2048
+      image: CentOS7
+      key_name: trystack-key
+      meta:
+        groups: "test"
+      name: test-1
+      nics:
+      - net-name: network-1
+      security_groups:
+      - default
+      - all
+      state: present
+    register: instance
+
+  - os_volume:
+      display_name: test-vol-1
+      size: 10
+      state: present
+
+  - os_server_volume:
+      state: present
+      server: test-1
+      volume: test-vol-1
+      #device: /dev/vdb
+
+  - debug:
+      msg: "External IP: {{ instance.openstack.public_v4 }}"
+
+  vars:
+  - create_network: True
